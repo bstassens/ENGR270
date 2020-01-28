@@ -1,8 +1,8 @@
 ;-------------------------------------------------------------------------------------
-; FILE: Intro.asm
-; DESC: Experiment 1 – Simple Counter
-; DATE: 5-18-06
-; AUTH: Class
+; FILE: LAB2.asm
+; DESC: Experiment 1 – 2*2bit input to 3bit sum output
+; DATE: 01-27-20
+; AUTH: Brady Stassens
 ; DEVICE: PICmicro (PIC18F1220)
 ;-------------------------------------------------------------------------------------
  list p=18F1220 ; Set processor type
