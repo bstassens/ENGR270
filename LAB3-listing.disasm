@@ -1,0 +1,131 @@
+Disassembly Listing for LAB3
+Generated From:
+C:/Users/glori/MPLABXProjects/LAB3.X/dist/default/debug/LAB3.X.debug.cof
+Feb 10, 2020 4:08:11 PM
+
+---  C:/Users/glori/MPLABXProjects/LAB3.X/LAB3.asm  -----------------------------------------------------
+                                                  1:     ;-------------------------------------------------------------------------------------
+                                                  2:     ; FILE: LAB3.asm
+                                                  3:     ; DESC: Experiment 2 ELLIPSE DRIVING
+                                                  4:     ; DATE: 02-10-20
+                                                  5:     ; AUTH: Brady Stassens && Amethyst Skye
+                                                  6:     ; DEVICE: PICmicro (PIC18F1220)
+                                                  7:     ;-------------------------------------------------------------------------------------
+                                                  8:     
+                                                  9:      list p=18F1220 ;processor type
+                                                  10:     radix hex ;default radix for data
+                                                  11:     config WDT=OFF,LVP=OFF,OSC=INTIO2
+                                                  12:    
+                                                  13:    #include p18F1220.inc ;header file
+                                                  14:    
+                                                  15:    #define dCount 0x80
+                                                  16:    #define dCountInner 0x81
+                                                  17:    #define LastValue 0x82
+                                                  18:    #define COUNT 0x83
+                                                  19:    
+                                                  20:     org 0x000 ; Set program origin to absolute 0x000
+                                                  21:     ; initialize all I/O ports
+0000  6A80     CLRF PORTA, ACCESS                 22:     CLRF PORTA ; Initialize PORTA
+0002  6A81     CLRF PORTB, ACCESS                 23:     CLRF PORTB ; Initialize PORTB
+0004  0E7F     MOVLW 0x7F                         24:     MOVLW 0x7F
+0006  6EC1     MOVWF ADCON1, ACCESS               25:     MOVWF ADCON1 ; Configure PortA<0:7> Digital and PortA<> Analog
+0008  0E35     MOVLW 0x35                         26:     MOVLW 0x35
+000A  6E92     MOVWF TRISA, ACCESS                27:     MOVWF TRISA ; Set Port A direction Per EDbot Micro Spec.
+000C  0EC3     MOVLW 0xC3                         28:     MOVLW 0xC3
+000E  6E93     MOVWF TRISB, ACCESS                29:     MOVWF TRISB ; Set Port A direction Per EDbot Micro Spec.
+                                                  30:    
+                                                  31:     ; Use INT0 switch to click through all functionality
+                                                  32:    MAIN:
+0010  8680     BSF PORTA, 3, ACCESS               33:     BSF PORTA,3 ; Step 1 - Turn on green LED
+0012  EC24     CALL 0x48, 0                       34:     CALL Int0Press
+0014  F000     NOP
+0016  EC31     CALL 0x62, 0                       35:     CALL ELLIPSE1
+0018  F000     NOP
+001A  9680     BCF PORTA, 3, ACCESS               36:     BCF PORTA,3 ; Turn off green LED
+001C  8A81     BSF PORTB, 5, ACCESS               37:     BSF PORTB,5 ; Step 2 - Turn on blue LED
+001E  EC24     CALL 0x48, 0                       38:     CALL Int0Press
+0020  F000     NOP
+0022  EC42     CALL 0x84, 0                       39:     CALL ELLIPSE2
+0024  F000     NOP
+0026  9A81     BCF PORTB, 5, ACCESS               40:     BCF PORTB,5 ; Turn off Blue LED
+0028  8481     BSF PORTB, 2, ACCESS               41:     BSF PORTB,2 ; Step 3 -Turn on red LED
+002A  EC24     CALL 0x48, 0                       42:     CALL Int0Press
+002C  F000     NOP
+002E  9481     BCF PORTB, 2, ACCESS               43:     BCF PORTB,2 ; Step 3 -Turn off red LED
+0030  D7EF     BRA 0x10                           44:     BRA MAIN
+                                                  45:    
+                                                  46:    ; DELAY function will delay by (Wreg/10) seconds
+                                                  47:    DELAY:
+0032  6F80     MOVWF 0x80, BANKED                 48:     MOVWF dCount
+                                                  49:    DELAYLoop:
+0034  EC1F     CALL 0x3E, 0                       50:     CALL DELAYOnce
+0036  F000     NOP
+0038  0780     DECF 0x80, F, BANKED               51:     DECF dCount
+003A  E1FC     BNZ 0x34                           52:     BNZ DELAYLoop
+003C  0012     RETURN 0                           53:     RETURN
+                                                  54:    DELAYOnce:
+003E  6B81     CLRF 0x81, BANKED                  55:     CLRF dCountInner ; Internal delay loop
+                                                  56:    DELAYOnceLoop:
+0040  0000     NOP                                57:     NOP
+0042  2B81     INCF 0x81, F, BANKED               58:     INCF dCountInner
+0044  E1FD     BNZ 0x40                           59:     BNZ DELAYOnceLoop
+0046  0012     RETURN 0                           60:     RETURN ; DELAY Function
+                                                  61:    
+                                                  62:    ; Wait until INT0 Button is pressed (include SW Debounce)
+                                                  63:    Int0Press:
+0048  0E01     MOVLW 0x1                          64:     MOVLW .1
+004A  EC19     CALL 0x32, 0                       65:     CALL DELAY
+004C  F000     NOP
+004E  5081     MOVF PORTB, W, ACCESS              66:     MOVF PORTB,0
+0050  0B01     ANDLW 0x1                          67:     ANDLW 0x01
+0052  E0FA     BZ 0x48                            68:     BZ Int0Press ; wait for button to be released
+                                                  69:    Int0PressZ:
+0054  0E01     MOVLW 0x1                          70:     MOVLW .1
+0056  EC19     CALL 0x32, 0                       71:     CALL DELAY
+0058  F000     NOP
+005A  5081     MOVF PORTB, W, ACCESS              72:     MOVF PORTB,0
+005C  0B01     ANDLW 0x1                          73:     ANDLW 0x01
+005E  E1FA     BNZ 0x54                           74:     BNZ Int0PressZ ; wait for buton to be pressed
+0060  0012     RETURN 0                           75:     RETURN ; Int1Press Function
+                                                  76:     
+                                                  77:    ELLIPSE1:
+0062  0E0A     MOVLW 0xA                          78:        MOVLW .10
+0064  6F83     MOVWF 0x83, BANKED                 79:        MOVWF COUNT
+0066  8681     BSF PORTB, 3, ACCESS               80:        BSF PORTB,3 ; Forward Left Motor
+0068  8E80     BSF PORTA, 7, ACCESS               81:        BSF PORTA,7 ; FORWARD Right Motor
+                                                  82:    ELOOP1:
+006A  0E05     MOVLW 0x5                          83:        MOVLW .5
+006C  EC19     CALL 0x32, 0                       84:        CALL DELAY
+006E  F000     NOP
+0070  9E80     BCF PORTA, 7, ACCESS               85:        BCF PORTA,7
+0072  0E01     MOVLW 0x1                          86:        MOVLW .1
+0074  EC19     CALL 0x32, 0                       87:        CALL DELAY
+0076  F000     NOP
+0078  8E80     BSF PORTA, 7, ACCESS               88:        BSF PORTA,7
+007A  0783     DECF 0x83, F, BANKED               89:        DECF COUNT
+007C  E1F6     BNZ 0x6A                           90:        BNZ ELOOP1
+007E  9681     BCF PORTB, 3, ACCESS               91:        BCF PORTB,3
+0080  9E80     BCF PORTA, 7, ACCESS               92:        BCF PORTA,7
+0082  0012     RETURN 0                           93:     return
+                                                  94:     
+                                                  95:    ELLIPSE2:
+0084  0E0A     MOVLW 0xA                          96:        MOVLW .10
+0086  6F83     MOVWF 0x83, BANKED                 97:        MOVWF COUNT
+0088  8881     BSF PORTB, 4, ACCESS               98:        BSF PORTB,4 ; Forward Left Motor
+008A  8C80     BSF PORTA, 6, ACCESS               99:        BSF PORTA,6 ; FORWARD Right Motor
+                                                  100:   ELOOP2:
+008C  0E05     MOVLW 0x5                          101:       MOVLW .5
+008E  EC19     CALL 0x32, 0                       102:       CALL DELAY
+0090  F000     NOP
+0092  9881     BCF PORTB, 4, ACCESS               103:       BCF PORTB,4
+0094  0E01     MOVLW 0x1                          104:       MOVLW .1
+0096  EC19     CALL 0x32, 0                       105:       CALL DELAY
+0098  F000     NOP
+009A  8881     BSF PORTB, 4, ACCESS               106:       BSF PORTB,4
+009C  0783     DECF 0x83, F, BANKED               107:       DECF COUNT
+009E  E1F6     BNZ 0x8C                           108:       BNZ ELOOP2
+00A0  9881     BCF PORTB, 4, ACCESS               109:       BCF PORTB,4
+00A2  9C80     BCF PORTA, 6, ACCESS               110:       BCF PORTA,6
+00A4  0012     RETURN 0                           111:    return
+                                                  112:       
+                                                  113:   end ; code end
