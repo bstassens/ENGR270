@@ -1,0 +1,96 @@
+Disassembly Listing for LAB4
+Generated From:
+C:/Users/glori/MPLABXProjects/LAB4.X/dist/default/production/LAB4.X.production.cof
+Feb 19, 2020 10:46:04 AM
+
+---  C:/Users/glori/MPLABXProjects/LAB4.X/LAB4.asm  -----------------------------------------------------
+                                                  1:     ;-------------------------------------------------------------------------------------
+                                                  2:     ; FILE: LAB4.asm
+                                                  3:     ; DESC: Experiment 1 - RGB cycle w/Motor interrupts 
+                                                  4:     ; DATE: 02-20-20
+                                                  5:     ; AUTH: Brady Stassens && Amethyst Skye
+                                                  6:     ; DEVICE: PICmicro (PIC18F1220)
+                                                  7:     ;-------------------------------------------------------------------------------------
+                                                  8:     
+                                                  9:      list p=18F1220 ;processor type
+                                                  10:     radix hex ;default radix for data
+                                                  11:     config WDT=OFF,LVP=OFF,OSC=INTIO2
+                                                  12:    
+                                                  13:    #include p18F1220.inc ;header file
+                                                  14:    
+                                                  15:    #define dCount 0x80
+                                                  16:    #define dCountInner 0x81
+                                                  17:    
+                                                  18:     org 0x000
+0000  EF16     GOTO 0x2C                          19:     GOTO START
+0002  F000     NOP
+                                                  20:     org 0x008
+0008  EF10     GOTO 0x20                          21:     GOTO INTHI
+000A  F000     NOP
+                                                  22:     org 0x018
+0018  EF13     GOTO 0x26                          23:     GOTO INTLO
+001A  F000     NOP
+                                                  24:     
+                                                  25:     org 0x020
+                                                  26:    INTHI:
+0020  7E80     BTG PORTA, 7, ACCESS               27:     BTG PORTA,7 ; FORWARD Right Motor TOGGLE
+0022  92F2     BCF INTCON, 1, ACCESS              28:     BCF INTCON,INT0IF
+0024  0010     RETFIE 0                           29:     RETFIE
+                                                  30:     
+                                                  31:    INTLO:
+0026  7681     BTG PORTB, 3, ACCESS               32:     BTG PORTB,3 ; Forward Left Motor TOGGLE
+0028  90F0     BCF INTCON3, 0, ACCESS             33:     BCF INTCON3,INT1IF
+002A  0010     RETFIE 0                           34:     RETFIE
+                                                  35:     
+                                                  36:    START:
+                                                  37:     ; initialize all I/O ports
+002C  6A80     CLRF PORTA, ACCESS                 38:     CLRF PORTA ; Initialize PORTA
+002E  6A81     CLRF PORTB, ACCESS                 39:     CLRF PORTB ; Initialize PORTB
+0030  0E7F     MOVLW 0x7F                         40:     MOVLW 0x7F
+0032  6EC1     MOVWF ADCON1, ACCESS               41:     MOVWF ADCON1 ; Configure PortA<0:7> Digital and PortA<> Analog
+0034  0E35     MOVLW 0x35                         42:     MOVLW 0x35
+0036  6E92     MOVWF TRISA, ACCESS                43:     MOVWF TRISA ; Set Port A direction Per EDbot Micro Spec.
+0038  0EC3     MOVLW 0xC3                         44:     MOVLW 0xC3
+003A  6E93     MOVWF TRISB, ACCESS                45:     MOVWF TRISB ; Set Port A direction Per EDbot Micro Spec.
+003C  0ED0     MOVLW 0xD0                         46:     MOVLW 0xD0
+003E  6EF2     MOVWF INTCON, ACCESS               47:     MOVWF INTCON ; GIE,PEIE,INT0IE
+0040  6AF0     CLRF INTCON3, ACCESS               48:     CLRF INTCON3
+0042  86F0     BSF INTCON3, 3, ACCESS             49:     BSF INTCON3,INT1IE
+0044  8ED0     BSF RCON, 7, ACCESS                50:     BSF RCON,IPEN
+                                                  51:     
+0046  0E05     MOVLW 0x5                          52:     MOVLW 5 ; PRELOAD 5 IN WREG TO CALL DELAY FOR HALF SECOND DELAYS
+                                                  53:    MAIN:
+0048  8680     BSF PORTA, 3, ACCESS               54:     BSF PORTA,3 ; Step 1 - Turn on green LED
+004A  EC31     CALL 0x62, 0                       55:     CALL DELAY
+004C  F000     NOP
+004E  9680     BCF PORTA, 3, ACCESS               56:     BCF PORTA,3 ; Turn off green LED
+0050  8A81     BSF PORTB, 5, ACCESS               57:     BSF PORTB,5 ; Step 2 - Turn on blue LED
+0052  EC31     CALL 0x62, 0                       58:     CALL DELAY
+0054  F000     NOP
+0056  9A81     BCF PORTB, 5, ACCESS               59:     BCF PORTB,5 ; Turn off Blue LED
+0058  8481     BSF PORTB, 2, ACCESS               60:     BSF PORTB,2 ; Step 3 -Turn on red LED
+005A  EC31     CALL 0x62, 0                       61:     CALL DELAY
+005C  F000     NOP
+005E  9481     BCF PORTB, 2, ACCESS               62:     BCF PORTB,2 ; Step 3 -Turn off red LED
+0060  D7F3     BRA 0x48                           63:     BRA MAIN
+                                                  64:    
+                                                  65:    ; DELAY function will delay by (Wreg/10) seconds
+                                                  66:    DELAY:
+0062  6F80     MOVWF 0x80, BANKED                 67:     MOVWF dCount
+                                                  68:    DELAYLoop:
+0064  EC37     CALL 0x6E, 0                       69:     CALL DELAYOnce
+0066  F000     NOP
+0068  0780     DECF 0x80, F, BANKED               70:     DECF dCount
+006A  E1FC     BNZ 0x64                           71:     BNZ DELAYLoop
+006C  0012     RETURN 0                           72:     RETURN
+                                                  73:    DELAYOnce:
+006E  6B81     CLRF 0x81, BANKED                  74:     CLRF dCountInner ; Internal delay loop
+                                                  75:    DELAYOnceLoop:
+0070  0000     NOP                                76:     NOP
+0072  2B81     INCF 0x81, F, BANKED               77:     INCF dCountInner
+0074  E1FD     BNZ 0x70                           78:     BNZ DELAYOnceLoop
+0076  0012     RETURN 0                           79:     RETURN ; DELAY Function
+                                                  80:        
+                                                  81:    end ; code end
+                                                  82:    
+                                                  83:    
