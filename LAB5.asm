@@ -18,6 +18,7 @@
  #define State 0x83 ; State variable is 8 bit and increments
  #define WregBack 0x84
  #define RGBticker 0x85
+ #define m2Tick 0x86
 
  org 0x000 ; Executes after reset
  BSF OSCCON,6 ; Ramp up to 1 MHZ (time elapsed=32 usec)
@@ -33,6 +34,7 @@ StartL:
  ; initialize all I/O ports
  CLRF State ; clear current state variable
  CLRF RGBticker ; clear RGBticker variable
+ CLRF m2Tick
  CLRF PORTA ; Initialize PORTA
  CLRF PORTB ; Initialize PORTB
  MOVLW 0x7F
@@ -48,12 +50,10 @@ StartL:
  BSF INTCON2, TMR0IP ; Set Timer 0 Interrupt to High priroity
  BSF RCON, IPEN ; enable priority levels on interrupts
  BCF INTCON, TMR0IF ; clear Timer 0 Interruplt flag
- MOVLW 0xC2 ;
- CLRF TMR0H ; (0x10000-0xC2F7=0x3D09 or 15625 ticks)
- MOVLW 0xF7 ; delay of .5 sec / 15625 ticks = 32 usec/tick
- CLRF TMR0L ;
- MOVLW 0x85 ; TMR0-ON, 16-bit, internal clock, 1:64 scale
- MOVWF T0CON ; Timer 0 tick is .5 sec (1 sec/8MHZ*4*64=32 usec/tick)
+ MOVLW 0x83 ; delay of 2 msec
+ MOVWF TMR0L ;
+ MOVLW 0xC4 ; TMR0-ON, 8-bit, internal clock, 1:32 scale
+ MOVWF T0CON ; Timer 0 tick is 2 msec (1 sec/8MHZ*4*32=16 usec/tick)
  BSF INTCON, GIE ; enable interrupts globally
  
  BSF PORTB,2 ; Red led initialized
@@ -90,62 +90,67 @@ INTHIdone: ; code to clean up and return from interrupt
  RETFIE
 
 TMR0int: ; handel Timer 0 Interrupt
- ; Increment 8-bit variable state every .5 sec
- INCF State
+ ; Increment 8-bit 2 msec ticker
+ INCF m2Tick
+ MOVLW .250
+ CPFSEQ m2Tick
+ BRA checkState
+ ; Increment state every 0.5 sec (250 x 2 msec = 0.5 sec)
+ CLRF m2Tick
+ MOVLW .8
+ CPFSLT State
+ CLRF State
  INCF RGBticker
- ; Start of code to be executed after every TMR 0 Int.
- MOVLW .1
- CPFSEQ State
+ INCF State
+checkState:
+ MOVLW .8
+ CPFSLT State
+ BRA TMR0Step8
+ MOVLW .7
+ CPFSLT State
+ BRA TMR0Step7
+ MOVLW .6
+ CPFSLT State
+ BRA TMR0Step6
+ MOVLW .5
+ CPFSLT State
+ BRA TMR0Step5
+ MOVLW .4
+ CPFSLT State
+ BRA TMR0Step4
+ MOVLW .3
+ CPFSLT State
+ BRA TMR0Step3
+ MOVLW .2
+ CPFSLT State
  BRA TMR0Step2
+TMR0Step1:
  BCF PORTA,7
-  ; Missing data to vari the motor speed
  BSF PORTA,6 ; 1. Right motor forward at 100% power
  BRA INTHIdone
 TMR0Step2:
- MOVLW .2
- CPFSEQ State
- BRA TMR0Step3
- ; 2. Reduce power to 50%
+ BTG PORTA,6 ; 2. Reduce power to 50%
  BRA INTHIdone
 TMR0Step3:
- MOVLW .3
- CPFSEQ State
- BRA TMR0Step4
- BCF PORTB,4
-  ; Missing data to vari the motor speed
+ BCF PORTA,6
  BSF PORTB,3 ; 3. Left motor backward at 100% power
  BRA INTHIdone
 TMR0Step4:
- MOVLW .4
- CPFSEQ State
- BRA TMR0Step5
- ; 4. Reduce power to 50%
+ BTG PORTB,3 ; 4. Reduce power to 50%
  BRA INTHIdone
 TMR0Step5:
- MOVLW .5
- CPFSEQ State
- BRA TMR0Step6
  BCF PORTB,3
- ; Missing data to vari the motor speed
  BSF PORTB,4 ; 5. Left motor forward at 100% power
  BRA INTHIdone
 TMR0Step6:
- MOVLW .6
- CPFSEQ State
- BRA TMR0Step7
- ; 6. Reduce power to 50%
+ BTG PORTB,4 ; 6. Reduce power to 50%
  BRA INTHIdone
 TMR0Step7:
- MOVLW .7
- CPFSEQ State
- BRA TMR0Step8
- BCF PORTA,6
- ; Missing data to vari the motor speed
+ BCF PORTB,4
  BSF PORTA,7 ; 7. Right motor backward at 100% power
  BRA INTHIdone
 TMR0Step8:
- ; 8. Reduce power to 50%
- CLRF State ; 9. Go to step 1
+ BTG PORTA,7 ; 8. Reduce power to 50%
  BRA INTHIdone
 
  end ; end program
