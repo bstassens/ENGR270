@@ -1,0 +1,163 @@
+Disassembly Listing for LAB5
+Generated From:
+C:/Users/glori/MPLABXProjects/LAB5.X/dist/default/production/LAB5.X.production.cof
+Mar 2, 2020 2:14:42 PM
+
+---  C:/Users/glori/MPLABXProjects/LAB5.X/LAB5.asm  -----------------------------------------------------
+                                                  1:     ;------------------------------------------------------------------------------
+                                                  2:     ; FILE: LAB5.asm
+                                                  3:     ; DESC: Experiment 1 - RGB cycle w/Motor interrupts on TMR0 
+                                                  4:     ; DATE: 03-03-20
+                                                  5:     ; AUTH: Brady Stassens && Amethyst Skye
+                                                  6:     ; DEVICE: PICmicro (PIC18F1220)
+                                                  7:     ;------------------------------------------------------------------------------
+                                                  8:     
+                                                  9:      list p=18F1220 ;processor type
+                                                  10:     radix hex ;default radix for data
+                                                  11:     ; Disable Watchdog timer, Low V. Prog, and RA6 as I/O
+                                                  12:     config WDT=OFF,LVP=OFF,OSC=INTIO2
+                                                  13:    
+                                                  14:     #include p18F1220.inc ;header file
+                                                  15:     #define dCount 0x80
+                                                  16:     #define dCountInner 0x81
+                                                  17:     #define LastValue 0x82
+                                                  18:     #define State 0x83 ; State variable is 8 bit and increments
+                                                  19:     #define WregBack 0x84
+                                                  20:     #define RGBticker 0x85
+                                                  21:     #define m2Tick 0x86
+                                                  22:    
+                                                  23:     org 0x000 ; Executes after reset
+0000  8CD3     BSF OSCCON, 6, ACCESS              24:     BSF OSCCON,6 ; Ramp up to 1 MHZ (time elapsed=32 usec)
+0002  8AD3     BSF OSCCON, 5, ACCESS              25:     BSF OSCCON,5 ; Ramp up to 4 MHZ (time elapsed=33 usec)
+0004  88D3     BSF OSCCON, 4, ACCESS              26:     BSF OSCCON,4 ; Ramp up to 8 MHZ (time elapsed=33.25 usec)
+0006  D00C     BRA 0x20                           27:     BRA StartL
+                                                  28:    
+                                                  29:     org 0x008 ; Executes after high priority interrupt
+0008  EF37     GOTO 0x6E                          30:     GOTO INTHI
+000A  F000     NOP
+                                                  31:    
+                                                  32:     org 0x20 ; Code start here 
+                                                  33:    StartL:
+                                                  34:     ; initialize all I/O ports
+0020  6B83     CLRF 0x83, BANKED                  35:     CLRF State ; clear current state variable
+0022  6B85     CLRF 0x85, BANKED                  36:     CLRF RGBticker ; clear RGBticker variable
+0024  6B86     CLRF 0x86, BANKED                  37:     CLRF m2Tick
+0026  6A80     CLRF PORTA, ACCESS                 38:     CLRF PORTA ; Initialize PORTA
+0028  6A81     CLRF PORTB, ACCESS                 39:     CLRF PORTB ; Initialize PORTB
+002A  0E7F     MOVLW 0x7F                         40:     MOVLW 0x7F
+002C  6EC1     MOVWF ADCON1, ACCESS               41:     MOVWF ADCON1 ; Configure PortA<0:7> Digital and PortA<> Analog
+002E  0E35     MOVLW 0x35                         42:     MOVLW 0x35
+0030  6E92     MOVWF TRISA, ACCESS                43:     MOVWF TRISA ; Set Port A direction Per EDbot Micro Spec.
+0032  0EC3     MOVLW 0xC3                         44:     MOVLW 0xC3
+0034  6E93     MOVWF TRISB, ACCESS                45:     MOVWF TRISB ; Set Port A direction Per EDbot Micro Spec.
+                                                  46:    
+                                                  47:     ; Enable TMR0
+0036  8CF2     BSF INTCON, 6, ACCESS              48:     BSF INTCON, PEIE ; enable all peripheral interrupts
+0038  8AF2     BSF INTCON, 5, ACCESS              49:     BSF INTCON, TMR0IE ; enable Timer 0 Interrupt
+003A  84F1     BSF INTCON2, 2, ACCESS             50:     BSF INTCON2, TMR0IP ; Set Timer 0 Interrupt to High priroity
+003C  8ED0     BSF RCON, 7, ACCESS                51:     BSF RCON, IPEN ; enable priority levels on interrupts
+003E  94F2     BCF INTCON, 2, ACCESS              52:     BCF INTCON, TMR0IF ; clear Timer 0 Interruplt flag
+0040  0E83     MOVLW 0x83                         53:     MOVLW 0x83 ; delay of 2 msec
+0042  6ED6     MOVWF TMR0, ACCESS                 54:     MOVWF TMR0L ;
+0044  0EC4     MOVLW 0xC4                         55:     MOVLW 0xC4 ; TMR0-ON, 8-bit, internal clock, 1:32 scale
+0046  6ED5     MOVWF T0CON, ACCESS                56:     MOVWF T0CON ; Timer 0 tick is 2 msec (1 sec/8MHZ*4*32=16 usec/tick)
+0048  8EF2     BSF INTCON, 7, ACCESS              57:     BSF INTCON, GIE ; enable interrupts globally
+                                                  58:     
+004A  8481     BSF PORTB, 2, ACCESS               59:     BSF PORTB,2 ; Red led initialized
+004C  0E03     MOVLW 0x3                          60:     MOVLW .3 ; set # to check RGBticker against to 3
+                                                  61:    MainL: ; Main loop
+004E  6385     CPFSEQ 0x85, BANKED                62:     CPFSEQ RGBticker ; @3(1.5 sec) change the RGB settings
+0050  D7FE     BRA 0x4E                           63:     BRA MainL
+                                                  64:    ; CLEAR TICKER & SWITCH LED COLOR
+0052  6B85     CLRF 0x85, BANKED                  65:     CLRF RGBticker
+0054  A481     BTFSS PORTB, 2, ACCESS             66:     BTFSS PORTB,2 ; SKIP next if==isRed
+0056  D003     BRA 0x5E                           67:     BRA GreenBlue
+0058  8680     BSF PORTA, 3, ACCESS               68:     BSF PORTA,3 ; Green ON
+005A  9481     BCF PORTB, 2, ACCESS               69:     BCF PORTB,2 ; Red OFF
+005C  D7F8     BRA 0x4E                           70:     BRA MainL
+                                                  71:    GreenBlue: ; Green to blue
+005E  A680     BTFSS PORTA, 3, ACCESS             72:     BTFSS PORTA,3 ; SKIP next if==isGreen
+0060  D003     BRA 0x68                           73:     BRA BlueRed
+0062  8A81     BSF PORTB, 5, ACCESS               74:     BSF PORTB,5 ; Blue ON
+0064  9680     BCF PORTA, 3, ACCESS               75:     BCF PORTA,3 ; Green OFF
+0066  D7F3     BRA 0x4E                           76:     BRA MainL
+                                                  77:    BlueRed: ; Blue to red
+0068  8481     BSF PORTB, 2, ACCESS               78:     BSF PORTB,2 ; Red ON
+006A  9A81     BCF PORTB, 5, ACCESS               79:     BCF PORTB,5 ; Blue OFF
+006C  D7F0     BRA 0x4E                           80:     BRA MainL
+                                                  81:        
+                                                  82:    ; Interrupt Handeling Section 
+                                                  83:    INTHI: ; High priority interrupts including Timer 0 Int.
+006E  6F84     MOVWF 0x84, BANKED                 84:     MOVWF WregBack ; Save Wreg.
+0070  B4F2     BTFSC INTCON, 2, ACCESS            85:     BTFSC INTCON, TMR0IF ; Check for Timer 0 high priority Interrupt
+0072  D003     BRA 0x7A                           86:     BRA TMR0int
+                                                  87:    INTHIdone: ; code to clean up and return from interrupt
+0074  5184     MOVF 0x84, W, BANKED               88:     MOVF WregBack,0 ; Recover Wreg.
+0076  94F2     BCF INTCON, 2, ACCESS              89:     BCF INTCON, TMR0IF ; Clear Timer 0 interrupt Flag
+0078  0010     RETFIE 0                           90:     RETFIE
+                                                  91:    
+                                                  92:    TMR0int: ; handel Timer 0 Interrupt
+                                                  93:     ; Increment 8-bit 2 msec ticker
+007A  2B86     INCF 0x86, F, BANKED               94:     INCF m2Tick
+007C  0EFA     MOVLW 0xFA                         95:     MOVLW .250
+007E  6386     CPFSEQ 0x86, BANKED                96:     CPFSEQ m2Tick
+0080  D006     BRA 0x8E                           97:     BRA checkState
+                                                  98:     ; Increment state every 0.5 sec (250 x 2 msec = 0.5 sec)
+0082  6B86     CLRF 0x86, BANKED                  99:     CLRF m2Tick
+0084  0E08     MOVLW 0x8                          100:    MOVLW .8
+0086  6183     CPFSLT 0x83, BANKED                101:    CPFSLT State
+0088  6B83     CLRF 0x83, BANKED                  102:    CLRF State
+008A  2B85     INCF 0x85, F, BANKED               103:    INCF RGBticker
+008C  2B83     INCF 0x83, F, BANKED               104:    INCF State
+                                                  105:   checkState:
+008E  0E08     MOVLW 0x8                          106:    MOVLW .8
+0090  6183     CPFSLT 0x83, BANKED                107:    CPFSLT State
+0092  D024     BRA 0xDC                           108:    BRA TMR0Step8
+0094  0E07     MOVLW 0x7                          109:    MOVLW .7
+0096  6183     CPFSLT 0x83, BANKED                110:    CPFSLT State
+0098  D01E     BRA 0xD6                           111:    BRA TMR0Step7
+009A  0E06     MOVLW 0x6                          112:    MOVLW .6
+009C  6183     CPFSLT 0x83, BANKED                113:    CPFSLT State
+009E  D019     BRA 0xD2                           114:    BRA TMR0Step6
+00A0  0E05     MOVLW 0x5                          115:    MOVLW .5
+00A2  6183     CPFSLT 0x83, BANKED                116:    CPFSLT State
+00A4  D013     BRA 0xCC                           117:    BRA TMR0Step5
+00A6  0E04     MOVLW 0x4                          118:    MOVLW .4
+00A8  6183     CPFSLT 0x83, BANKED                119:    CPFSLT State
+00AA  D00E     BRA 0xC8                           120:    BRA TMR0Step4
+00AC  0E03     MOVLW 0x3                          121:    MOVLW .3
+00AE  6183     CPFSLT 0x83, BANKED                122:    CPFSLT State
+00B0  D008     BRA 0xC2                           123:    BRA TMR0Step3
+00B2  0E02     MOVLW 0x2                          124:    MOVLW .2
+00B4  6183     CPFSLT 0x83, BANKED                125:    CPFSLT State
+00B6  D003     BRA 0xBE                           126:    BRA TMR0Step2
+                                                  127:   TMR0Step1:
+00B8  9E80     BCF PORTA, 7, ACCESS               128:    BCF PORTA,7
+00BA  8C80     BSF PORTA, 6, ACCESS               129:    BSF PORTA,6 ; 1. Right motor forward at 100% power
+00BC  D7DB     BRA 0x74                           130:    BRA INTHIdone
+                                                  131:   TMR0Step2:
+00BE  7C80     BTG PORTA, 6, ACCESS               132:    BTG PORTA,6 ; 2. Reduce power to 50%
+00C0  D7D9     BRA 0x74                           133:    BRA INTHIdone
+                                                  134:   TMR0Step3:
+00C2  9C80     BCF PORTA, 6, ACCESS               135:    BCF PORTA,6
+00C4  8681     BSF PORTB, 3, ACCESS               136:    BSF PORTB,3 ; 3. Left motor backward at 100% power
+00C6  D7D6     BRA 0x74                           137:    BRA INTHIdone
+                                                  138:   TMR0Step4:
+00C8  7681     BTG PORTB, 3, ACCESS               139:    BTG PORTB,3 ; 4. Reduce power to 50%
+00CA  D7D4     BRA 0x74                           140:    BRA INTHIdone
+                                                  141:   TMR0Step5:
+00CC  9681     BCF PORTB, 3, ACCESS               142:    BCF PORTB,3
+00CE  8881     BSF PORTB, 4, ACCESS               143:    BSF PORTB,4 ; 5. Left motor forward at 100% power
+00D0  D7D1     BRA 0x74                           144:    BRA INTHIdone
+                                                  145:   TMR0Step6:
+00D2  7881     BTG PORTB, 4, ACCESS               146:    BTG PORTB,4 ; 6. Reduce power to 50%
+00D4  D7CF     BRA 0x74                           147:    BRA INTHIdone
+                                                  148:   TMR0Step7:
+00D6  9881     BCF PORTB, 4, ACCESS               149:    BCF PORTB,4
+00D8  8E80     BSF PORTA, 7, ACCESS               150:    BSF PORTA,7 ; 7. Right motor backward at 100% power
+00DA  D7CC     BRA 0x74                           151:    BRA INTHIdone
+                                                  152:   TMR0Step8:
+00DC  7E80     BTG PORTA, 7, ACCESS               153:    BTG PORTA,7 ; 8. Reduce power to 50%
+00DE  D7CA     BRA 0x74                           154:    BRA INTHIdone
+                                                  155:   
+                                                  156:    end ; end program
